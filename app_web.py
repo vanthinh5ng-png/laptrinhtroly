@@ -229,7 +229,7 @@ def doc_toa_thuoc_bang_ai(file_anh):
     for luot_thu in range(5):
         try:
             response = client.chat.completions.create(
-                model="Llama-3.2-11B-Vision-Instruct",  
+                model="Llama-3.2-90B-Vision-Instruct",  # Đã chuyển sang mô hình Vision chuẩn mới nhất
                 messages=[
                     {"role": "user", "content": [
                         {"type": "text", "text": loi_dan},
