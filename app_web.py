@@ -7,16 +7,13 @@ from openai import OpenAI
 import time
 import re
 
-
 st.set_page_config(page_title="Trợ Lý Nhắc Thuốc AI ", layout="wide")
-
 
 try:
     with open("style.css", "r", encoding="utf-8") as f:
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 except FileNotFoundError:
     pass
-
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -29,9 +26,8 @@ if "quet_thanh_cong" not in st.session_state:
 if "du_lieu_ocr" not in st.session_state:
     st.session_state.du_lieu_ocr = None
 
-
 with st.sidebar:
-    st.markdown("###  Lịch Sử Đơn Thuốc")
+    st.markdown("### Lịch Sử Đơn Thuốc")
     st.caption("Bấm vào từng đơn để xem chi tiết hướng dẫn uống thuốc.")
     
     js_render_history = """
@@ -120,7 +116,7 @@ with st.sidebar:
                     container.setAttribute('data-len', String(lichSu.length));
                 }
             } catch(e) {
-                container.innerHTML = '<p style="color: red;">Lỗi đọc dữ liệu lịch sử.</p>';
+                container.innerHTML = '<p style="color: Red;">Lỗi đọc dữ liệu lịch sử.</p>';
             }
         }
         function clearHistory() {
@@ -136,7 +132,6 @@ with st.sidebar:
     </script>
     """
     components.html(js_render_history, height=650, scrolling=True)
-
 
 js_global_alarm = """
 <script>
@@ -184,7 +179,6 @@ js_global_alarm = """
 """
 components.html(js_global_alarm, height=0, width=0)
 
-
 class ThongTinThuoc(BaseModel):
     ten_thuoc: str = Field(default="")
     lieu_luong: Optional[str] = Field(default="")
@@ -214,7 +208,6 @@ def tao_thong_bao_trinh_duyet(du_lieu_toa):
 def encode_image(file_anh):
     return base64.b64encode(file_anh.getvalue()).decode('utf-8')
 
-
 def doc_toa_thuoc_bang_ai(file_anh):
     api_key_an = st.secrets["SAMBANOVA_API_KEY"]
     client = OpenAI(api_key=api_key_an, base_url="https://api.sambanova.ai/v1")
@@ -232,11 +225,11 @@ def doc_toa_thuoc_bang_ai(file_anh):
     Trường "so_ngay_uong" bắt buộc là SỐ NGUYÊN.
     """
 
-    thoi_gian_cho = 4  
-    for luot_thu in range(4):
+    thoi_gian_cho = 6  
+    for luot_thu in range(5):
         try:
             response = client.chat.completions.create(
-                model="gemma-3-12b-it",  
+                model="Llama-3.2-11B-Vision-Instruct",  
                 messages=[
                     {"role": "user", "content": [
                         {"type": "text", "text": loi_dan},
@@ -258,18 +251,17 @@ def doc_toa_thuoc_bang_ai(file_anh):
                 
         except Exception as e:
             if "429" in str(e) or "rate_limit" in str(e).lower():
-                if luot_thu < 3:
-                    st.warning(f"⚠️ Hệ thống đang quá tải (Lỗi 429). Đang thử lại sau {thoi_gian_cho} giây...")
+                if luot_thu < 4:
+                    st.warning(f"Hệ thống đang điều phối lưu lượng (Lỗi 429). Đang kết nối lại tự động sau {thoi_gian_cho} giây...")
                     time.sleep(thoi_gian_cho)
                     thoi_gian_cho *= 2
                     continue
             else:
-                if luot_thu < 3:
-                    time.sleep(2)
+                if luot_thu < 4:
+                    time.sleep(3)
                     continue
-            st.error(f"⚠️ Lỗi xử lý AI: {e}")
+            st.error(f"Lỗi xử lý AI: {e}")
             return None
-
 
 st.markdown('<div class="main-title">Trợ Lý Y Tế AI Toàn Diện</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Quét đơn thuốc - Lên lịch báo thức - Dược sĩ ảo tư vấn 24/7</div>', unsafe_allow_html=True)
@@ -286,7 +278,6 @@ if file_tai_len is not None:
                 st.session_state.toa_thuoc_context = du_lieu.model_dump_json()
                 st.session_state.quet_thanh_cong = True
                 
-                
                 tom_tat_chatbox = "Tôi đã xử lý xong đơn thuốc của bạn.\n\n"
                 tom_tat_chatbox += f"**Thời gian dùng:** {du_lieu.so_ngay_uong} ngày.\n"
                 tom_tat_chatbox += "**Danh mục thuốc nhận diện:**\n"
@@ -294,12 +285,9 @@ if file_tai_len is not None:
                     tom_tat_chatbox += f"- **{t.ten_thuoc}**: {t.lieu_luong or 'Theo chỉ định'} (Giờ uống: {', '.join(t.gio_uong_goi_y)})\n"
                 tom_tat_chatbox += "\nBạn có câu hỏi nào cần tôi tư vấn về liều lượng, kiêng cữ hay tác dụng phụ không?"
                 
-                # Append thẳng vào luồng hội thoại chatbox
                 st.session_state.messages.append({"role": "assistant", "content": tom_tat_chatbox})
-                
                 tao_thong_bao_trinh_duyet(du_lieu)
                 st.success("Hệ thống đã phân tích thành công và cập nhật vào AI !")
-
 
 if st.session_state.quet_thanh_cong and st.session_state.du_lieu_ocr:
     du_lieu = st.session_state.du_lieu_ocr
@@ -325,7 +313,6 @@ if st.session_state.quet_thanh_cong and st.session_state.du_lieu_ocr:
 
 st.markdown("<br><hr><br>", unsafe_allow_html=True)
 
-
 st.markdown("## NHÀ THUỐC AI")
 st.caption("AI đã ghi nhớ thông tin đơn thuốc của bạn. Vui lòng đặt câu hỏi nếu có thắc mắc.")
 
@@ -344,9 +331,8 @@ if prompt := st.chat_input("Nhập câu hỏi tại đây (Ví dụ: Thuốc nà
             message_placeholder = st.empty()
             message_placeholder.markdown("Đang tra cứu cơ sở dữ liệu y khoa...")
             
-            
             api_key_an = st.secrets["SAMBANOVA_API_KEY"]
-            client = OpenAI(api_key=api_key_an, base_url="https://api.sambanova.ai/v1")
+            client = OpenAI(api_key=api_key_an, base_url="[https://api.sambanova.ai/v1](https://api.sambanova.ai/v1)")
             
             system_prompt = "Bạn là NHÀ THUỐC AI, một dược sĩ tận tâm, chuyên nghiệp. Trả lời rõ ràng, lịch sự."
             if st.session_state.toa_thuoc_context:
@@ -356,11 +342,11 @@ if prompt := st.chat_input("Nhập câu hỏi tại đây (Ví dụ: Thuốc nà
             for msg in st.session_state.messages:
                 messages_for_api.append({"role": msg["role"], "content": msg["content"]})
             
-            thoi_gian_cho_chat = 3
+            thoi_gian_cho_chat = 4
             for luot_thu_chat in range(3):
                 try:
                     response = client.chat.completions.create(
-                        model="Llama-4-Maverick-17B-128E-Instruct",
+                        model="Llama-3.1-8B-Instruct",
                         messages=messages_for_api,
                         temperature=0.7
                     )
@@ -378,11 +364,11 @@ if prompt := st.chat_input("Nhập câu hỏi tại đây (Ví dụ: Thuốc nà
                             continue
                     message_placeholder.error(f"Xin lỗi, kết nối máy chủ gián đoạn hoặc quá tải: {e}")
                     break
-                # Đặt ở cuối cùng file code của bạn
+
 st.markdown(
     """
     <div style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; font-weight: bold; color: #00796B; background-color: #e0f2f1; padding: 8px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-        Tác Giả:Thịnh,Khiêm,Huyền,Khánh
+        Tác Giả: Thịnh, Khiêm, Huyền, Khánh
     </div>
     """, 
     unsafe_allow_html=True
